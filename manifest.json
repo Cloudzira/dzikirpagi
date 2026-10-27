@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "DzikirKu - Dzikir Pagi & Petang",
+  "short_name": "DzikirKu",
+  "description": "Dzikir pagi dan petang lengkap dengan penghitung, pengingat, dan sumber hadits.",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#061513",
+  "theme_color": "#061513",
+  "categories": ["lifestyle", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Dzikir Pagi", "url": "./?tab=pagi", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Dzikir Petang", "url": "./?tab=petang", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
