@@ -67,7 +67,13 @@ header small{color:var(--mut);font-size:12px;display:block}
 .eq i:nth-child(2){animation-delay:.2s}.eq i:nth-child(3){animation-delay:.4s}
 @keyframes eq{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
 @keyframes hl{50%{box-shadow:0 0 0 1px var(--b) inset,0 0 42px var(--glow)}}
-.hero .btn{margin-top:14px}
+.hero .btn{margin-top:14px;display:flex;align-items:center;justify-content:center}
+.btn svg{width:15px;height:15px;margin-right:8px;flex:none}
+.txt.pl{display:inline-flex;align-items:center}
+.txt.pl svg{width:13px;height:13px;margin-right:6px;flex:none}
+.npb{width:44px;height:44px;flex:none;border-radius:14px;padding:0}
+.npb svg{width:20px;height:20px}
+.npb.main{border:0;background:linear-gradient(135deg,var(--a),var(--b));color:#06130f;box-shadow:0 0 16px var(--glow)}
 #np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));width:min(92%,520px);display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--a);border-radius:18px;background:var(--bg2);box-shadow:0 0 24px var(--glow);z-index:40}
 #np .tt{flex:1;min-width:0;cursor:pointer}#np b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#np span{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.np-on .wrap{padding-bottom:96px}
@@ -123,7 +129,7 @@ footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
   </header>
 
   <div class="seg"><button id="tp" class="on">☀ Dzikir Pagi</button><button id="tl">☾ Dzikir Petang</button></div>
-  <div class="hero"><div class="row"><b id="hT">-</b><span id="hS">-</span></div><div class="bar"><i id="hB"></i></div><button class="btn" id="pa">▶ Putar Semua Dzikir</button></div>
+  <div class="hero"><div class="row"><b id="hT">-</b><span id="hS">-</span></div><div class="bar"><i id="hB"></i></div><button class="btn" id="pa"></button></div>
   <div id="list"></div>
 
   <footer>
@@ -149,7 +155,7 @@ footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
   <button class="btn g" id="chk">Cek file audio</button><div class="aul" id="aul"></div>
   <button class="btn g" id="close">Tutup</button>
 </div></div>
-<div id="np" hidden><div class="tt" id="npt"><b id="npn"></b><span id="npc"></span></div><button class="ib" id="npn2" hidden aria-label="Lewati ke dzikir berikutnya" title="Berikutnya">⏭</button><button class="ib" id="npb" aria-label="Jeda audio" title="Jeda">❚❚</button></div>
+<div id="np" hidden><div class="tt" id="npt"><b id="npn"></b><span id="npc"></span></div><button class="ib npb" id="npn2" hidden aria-label="Lewati ke dzikir berikutnya" title="Berikutnya"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 5.6v12.8a1 1 0 0 0 1.5.86l9-6.4a1 1 0 0 0 0-1.72l-9-6.4a1 1 0 0 0-1.5.86z"/><rect x="17" y="5" width="2.8" height="14" rx="1.3"/></svg></button><button class="ib npb main" id="npb" aria-label="Jeda audio" title="Jeda"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.3"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.3"/></svg></button></div>
 <div id="toast"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -218,6 +224,7 @@ const $=s=>document.getElementById(s),LS=localStorage;
 const get=(k,d)=>{try{const v=LS.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
 const set=(k,v)=>{try{LS.setItem(k,JSON.stringify(v))}catch(e){}};
 const pad=n=>String(n).padStart(2,'0');
+const IC_PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10-6.4a1 1 0 0 0 0-1.72l-10-6.4A1 1 0 0 0 8 5.6z"/></svg>',IC_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.2" height="14" rx="1.3"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.3"/></svg>';
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 let S=Object.assign({theme:'muslim',tp:'05:00',tl:'16:30',ep:true,el:true,vib:true},get('dz_set',{}));
 let sess=new Date().getHours()<12?'pagi':'petang';
@@ -238,7 +245,7 @@ function render(){
     const i=ids(x),c=C[sess][i]||0,ok=c>=x.n;if(ok)done++;
     const el=document.createElement('div');el.className='card'+(ok?' done':'')+(pl===i?' playing':'');el.dataset.card=i;
     el.innerHTML=(pl===i?'<div class="bd"><span class="eq"><i></i><i></i><i></i></span>Sedang diputar</div>':'')+'<h3>'+x.t+'</h3><div class="src">'+x.s+'</div><div class="ar" lang="ar">'+x.ar+'</div><div class="id">'+x.id+'</div>'+(au(x)?'<div class="qr">Audio: '+QARI+'</div>':'')+
-    '<div class="ctl"><div class="lf"><button class="txt" data-r="'+i+'">Ulangi</button>'+(au(x)?'<button class="txt pl'+(pl===i?' on':'')+'" data-p="'+i+'">'+(pl===i?'❚❚ Jeda':'▶ Dengar')+'</button>':'')+'</div><button class="tap" data-i="'+i+'" aria-label="Hitung '+x.t+'"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="42"/><circle class="p" cx="50" cy="50" r="42" stroke-dasharray="'+R+'" stroke-dashoffset="'+R*(1-Math.min(c/x.n,1))+'"/></svg><span><div>'+(ok?'✓':c)+'<small>dari '+x.n+'x</small></div></span></button></div>';
+    '<div class="ctl"><div class="lf"><button class="txt" data-r="'+i+'">Ulangi</button>'+(au(x)?'<button class="txt pl'+(pl===i?' on':'')+'" data-p="'+i+'">'+(pl===i?IC_PAUSE+'Jeda':IC_PLAY+'Dengar')+'</button>':'')+'</div><button class="tap" data-i="'+i+'" aria-label="Hitung '+x.t+'"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="42"/><circle class="p" cx="50" cy="50" r="42" stroke-dasharray="'+R+'" stroke-dashoffset="'+R*(1-Math.min(c/x.n,1))+'"/></svg><span><div>'+(ok?'✓':c)+'<small>dari '+x.n+'x</small></div></span></button></div>';
     box.appendChild(el);
   });
   $('hT').textContent='Dzikir '+(sess==='pagi'?'Pagi':'Petang');
@@ -248,7 +255,7 @@ function render(){
   if(pl>=0){np.hidden=false;$('npn').textContent=D[pl].t;$('npc').textContent=(all?'Putar semua '+(qpos+1)+'/'+queue.length+' · ':'')+(C[psess][pl]||0)+' dari '+D[pl].n+'x · '+QARI}else np.hidden=true;
   document.body.classList.toggle('np-on',pl>=0);
   $('npn2').hidden=!all;
-  $('pa').textContent=all?'❚❚ Hentikan Putar Semua':'▶ Putar Semua Dzikir';
+  $('pa').innerHTML=all?IC_PAUSE+'Hentikan Putar Semua':IC_PLAY+'Putar Semua Dzikir';
   $('pa').classList.toggle('g',all);
 }
 
