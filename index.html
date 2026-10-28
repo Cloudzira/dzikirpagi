@@ -58,6 +58,10 @@ header small{color:var(--mut);font-size:12px;display:block}
 .txt{background:none;border:1px solid var(--line);color:var(--mut);border-radius:12px;padding:8px 12px;font:12px Sora,sans-serif;cursor:pointer}
 .lf{display:flex;gap:8px;flex-wrap:wrap}.pl.on{border-color:var(--a);color:var(--a);box-shadow:0 0 14px var(--glow)}.qr{font-size:11.5px;color:var(--b);margin-top:8px}
 .aul{font-size:12px;line-height:1.8;color:var(--mut);margin-top:8px;word-break:break-all}.aul b{color:var(--a)}.aul i{color:#ff8a8a;font-style:normal}
+.card{scroll-margin-top:12px}
+#np{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));width:min(92%,520px);display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--a);border-radius:18px;background:var(--bg2);box-shadow:0 0 24px var(--glow);z-index:40}
+#np .tt{flex:1;min-width:0;cursor:pointer}#np b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#np span{display:block;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.np-on .wrap{padding-bottom:96px}
 .empty{text-align:center;color:var(--mut);padding:20px;font-size:13px}
 footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
 .soc{display:flex;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -136,6 +140,7 @@ footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
   <button class="btn g" id="chk">Cek file audio</button><div class="aul" id="aul"></div>
   <button class="btn g" id="close">Tutup</button>
 </div></div>
+<div id="np" hidden><div class="tt" id="npt"><b id="npn"></b><span id="npc"></span></div><button class="ib" id="npb" aria-label="Jeda audio" title="Jeda">❚❚</button></div>
 <div id="toast"></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -222,7 +227,7 @@ function render(){
   let done=0;
   L.forEach(x=>{
     const i=ids(x),c=C[sess][i]||0,ok=c>=x.n;if(ok)done++;
-    const el=document.createElement('div');el.className='card'+(ok?' done':'');
+    const el=document.createElement('div');el.className='card'+(ok?' done':'');el.dataset.card=i;
     el.innerHTML='<h3>'+x.t+'</h3><div class="src">'+x.s+'</div><div class="ar" lang="ar">'+x.ar+'</div><div class="id">'+x.id+'</div>'+(au(x)?'<div class="qr">Audio: '+QARI+'</div>':'')+
     '<div class="ctl"><div class="lf"><button class="txt" data-r="'+i+'">Ulangi</button>'+(au(x)?'<button class="txt pl'+(pl===i?' on':'')+'" data-p="'+i+'">'+(pl===i?'❚❚ Jeda':'▶ Dengar')+'</button>':'')+'</div><button class="tap" data-i="'+i+'" aria-label="Hitung '+x.t+'"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="42"/><circle class="p" cx="50" cy="50" r="42" stroke-dasharray="'+R+'" stroke-dashoffset="'+R*(1-Math.min(c/x.n,1))+'"/></svg><span><div>'+(ok?'✓':c)+'<small>dari '+x.n+'x</small></div></span></button></div>';
     box.appendChild(el);
@@ -230,6 +235,9 @@ function render(){
   $('hT').textContent='Dzikir '+(sess==='pagi'?'Pagi':'Petang');
   $('hS').textContent=done+' dari '+L.length+' selesai';
   $('hB').style.width=(done/L.length*100)+'%';
+  const np=$('np');
+  if(pl>=0){np.hidden=false;$('npn').textContent=D[pl].t;$('npc').textContent=(C[psess][pl]||0)+' dari '+D[pl].n+'x · '+QARI}else np.hidden=true;
+  document.body.classList.toggle('np-on',pl>=0);
 }
 
 $('list').addEventListener('click',e=>{
@@ -244,12 +252,13 @@ $('list').addEventListener('click',e=>{
   }else if(b.dataset.r!==undefined){C[sess][+b.dataset.r]=0;save();render()}
   else if(b.dataset.p!==undefined){togglePlay(+b.dataset.p)}
 });
-$('tp').onclick=()=>{AU.pause();pl=-1;sess='pagi';render()};
-$('tl').onclick=()=>{AU.pause();pl=-1;sess='petang';render()};
+$('tp').onclick=()=>{AU.pause();run++;pl=-1;sess='pagi';render()};
+$('tl').onclick=()=>{AU.pause();run++;pl=-1;sess='petang';render()};
 $('thm').onclick=()=>{S.theme=S.theme==='muslim'?'muslimah':'muslim';save();theme();render()};
 
 /* Audio dzikir. Letakkan file di folder audio/ dengan nama = judul dzikir (huruf kecil, spasi jadi tanda -).
    Contoh: "Ayat Kursi" -> audio/ayat-kursi.mp3 . Format yang dikenali: mp3, m4a, ogg, wav.
+   Audio diputar berulang sesuai jumlah bacaan (n) dan hitungan bertambah otomatis tiap selesai satu bacaan.
    Ubah nama qari di bawah bila perlu. Jika file belum ada, 4 dzikir Al-Qur'an memakai audio online Alafasy. */
 const QARI='Syaikh Mishary Rashid Alafasy';
 const EXT=['mp3','m4a','ogg','wav'];
@@ -264,7 +273,13 @@ function urls(x){
   return L;
 }
 const AU=new Audio();AU.preload='auto';
-let pl=-1,mode='',cl=[],ci=0,seq=[],pos=0,alt=0;
+let pl=-1,mode='',cl=[],ci=0,seq=[],pos=0,alt=0,left=0,run=0,psess='pagi';
+
+function showCard(i){
+  const el=document.querySelector('[data-card="'+i+'"]');if(!el)return;
+  const tall=el.offsetHeight>innerHeight*0.8;
+  el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:tall?'start':'center'});
+}
 function play(){AU.play().catch(e=>{if(e&&e.name==='NotAllowedError'){toast('Ketuk tombol Dengar sekali lagi untuk memutar audio.');pl=-1;render()}})}
 function startLocal(i){
   cl=cands(D[i]);
@@ -272,12 +287,28 @@ function startLocal(i){
   ci=0;mode='local';AU.src=cl[0];play();
 }
 function playOnline(){
-  if(pos>=seq.length){pl=-1;render();return}
+  if(pos>=seq.length){finishRep();return}
   AU.src=seq[pos][alt]||seq[pos][0];play();
+}
+/* satu bacaan selesai: tambah hitungan, ulangi sampai jumlah terpenuhi */
+function finishRep(){
+  const i=pl,x=D[i],tok=run;
+  C[psess][i]=Math.min((C[psess][i]||0)+1,x.n);save();left--;
+  if(C[psess][i]>=x.n||left<=0){
+    pl=-1;render();
+    if(C[psess][i]>=x.n){toast('Alhamdulillah, "'+x.t+'" selesai');if(S.vib&&navigator.vibrate)navigator.vibrate([40,40,80])}
+    return;
+  }
+  render();
+  setTimeout(()=>{
+    if(tok!==run||pl!==i)return;
+    if(mode==='local'){AU.currentTime=0;play()}else{pos=0;alt=0;playOnline()}
+  },800);
 }
 AU.onplaying=()=>{if(mode==='local'&&pl>=0){found[pl]=cl[ci];set('dz_au',found)}};
 AU.onended=()=>{
-  if(mode==='local'){pl=-1;render();return}
+  if(pl<0)return;
+  if(mode==='local'){finishRep();return}
   pos++;alt=0;playOnline();
 };
 AU.onerror=()=>{
@@ -291,14 +322,21 @@ AU.onerror=()=>{
   if(alt===0&&seq[pos]&&seq[pos][1]){alt=1;playOnline();return}
   toast('Audio belum bisa diputar. Periksa koneksi internet Anda.');pl=-1;render();
 };
+function stopAudio(){AU.pause();run++;pl=-1;render()}
 function togglePlay(i){
-  if(pl===i){AU.pause();pl=-1;render();return}
-  const x=D[i];pl=i;render();startLocal(i);
+  if(pl===i){stopAudio();return}
+  const x=D[i];
+  let c=C[sess][i]||0;
+  if(c>=x.n){C[sess][i]=0;save();c=0}
+  left=x.n-c;psess=sess;run++;pl=i;
+  render();showCard(i);startLocal(i);
   if('mediaSession' in navigator){
     navigator.mediaSession.metadata=new MediaMetadata({title:x.t,artist:QARI,album:'DzikirKu',artwork:[{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]});
-    navigator.mediaSession.setActionHandler('pause',()=>{AU.pause();pl=-1;render()});
+    navigator.mediaSession.setActionHandler('pause',stopAudio);
   }
 }
+$('npb').onclick=stopAudio;
+$('npt').onclick=()=>{if(pl>=0)showCard(pl)};
 $('chk').onclick=async()=>{
   const o=$('aul');o.textContent='Memeriksa...';let ok=0,html='';
   for(let i=0;i<D.length;i++){
