@@ -57,6 +57,7 @@ header small{color:var(--mut);font-size:12px;display:block}
 .tap:active{transform:scale(.94)}
 .txt{background:none;border:1px solid var(--line);color:var(--mut);border-radius:12px;padding:8px 12px;font:12px Sora,sans-serif;cursor:pointer}
 .lf{display:flex;gap:8px;flex-wrap:wrap}.pl.on{border-color:var(--a);color:var(--a);box-shadow:0 0 14px var(--glow)}.qr{font-size:11.5px;color:var(--b);margin-top:8px}
+.aul{font-size:12px;line-height:1.8;color:var(--mut);margin-top:8px;word-break:break-all}.aul b{color:var(--a)}.aul i{color:#ff8a8a;font-style:normal}
 .empty{text-align:center;color:var(--mut);padding:20px;font-size:13px}
 footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
 .soc{display:flex;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -132,6 +133,7 @@ footer{margin:26px 0 14px;text-align:center;color:var(--mut);font-size:13px}
   <button class="btn" id="perm">Izinkan notifikasi</button>
   <button class="btn g" id="test">Coba notifikasi</button>
   <div class="stat" id="pst"></div>
+  <button class="btn g" id="chk">Cek file audio</button><div class="aul" id="aul"></div>
   <button class="btn g" id="close">Tutup</button>
 </div></div>
 <div id="toast"></div>
@@ -221,7 +223,7 @@ function render(){
   L.forEach(x=>{
     const i=ids(x),c=C[sess][i]||0,ok=c>=x.n;if(ok)done++;
     const el=document.createElement('div');el.className='card'+(ok?' done':'');
-    el.innerHTML='<h3>'+x.t+'</h3><div class="src">'+x.s+'</div><div class="ar" lang="ar">'+x.ar+'</div><div class="id">'+x.id+'</div>'+(au(x)?'<div class="qr">Audio: Syaikh Mishary Rashid Alafasy</div>':'')+
+    el.innerHTML='<h3>'+x.t+'</h3><div class="src">'+x.s+'</div><div class="ar" lang="ar">'+x.ar+'</div><div class="id">'+x.id+'</div>'+(au(x)?'<div class="qr">Audio: '+QARI+'</div>':'')+
     '<div class="ctl"><div class="lf"><button class="txt" data-r="'+i+'">Ulangi</button>'+(au(x)?'<button class="txt pl'+(pl===i?' on':'')+'" data-p="'+i+'">'+(pl===i?'❚❚ Jeda':'▶ Dengar')+'</button>':'')+'</div><button class="tap" data-i="'+i+'" aria-label="Hitung '+x.t+'"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="42"/><circle class="p" cx="50" cy="50" r="42" stroke-dasharray="'+R+'" stroke-dashoffset="'+R*(1-Math.min(c/x.n,1))+'"/></svg><span><div>'+(ok?'✓':c)+'<small>dari '+x.n+'x</small></div></span></button></div>';
     box.appendChild(el);
   });
@@ -246,37 +248,71 @@ $('tp').onclick=()=>{AU.pause();pl=-1;sess='pagi';render()};
 $('tl').onclick=()=>{AU.pause();pl=-1;sess='petang';render()};
 $('thm').onclick=()=>{S.theme=S.theme==='muslim'?'muslimah':'muslim';save();theme();render()};
 
-/* Audio: qari Syaikh Mishary Rashid Alafasy (per ayat, butuh internet).
-   Dzikir non-Quran bisa diberi audio sendiri dengan menambah au:'audio/namafile.mp3' pada item di atas. */
+/* Audio dzikir. Letakkan file di folder audio/ dengan nama = judul dzikir (huruf kecil, spasi jadi tanda -).
+   Contoh: "Ayat Kursi" -> audio/ayat-kursi.mp3 . Format yang dikenali: mp3, m4a, ogg, wav.
+   Ubah nama qari di bawah bila perlu. Jika file belum ada, 4 dzikir Al-Qur'an memakai audio online Alafasy. */
 const QARI='Syaikh Mishary Rashid Alafasy';
+const EXT=['mp3','m4a','ogg','wav'];
+const slug=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const p3=n=>String(n).padStart(3,'0');
-const au=x=>!!(x.q||x.au);
+const au=()=>true;
+let found=get('dz_au',{});
+const cands=x=>x.au?[x.au]:EXT.map(e=>'audio/'+slug(x.t)+'.'+e);
 function urls(x){
-  if(x.au)return [[x.au]];
   const L=[];
   for(let v=x.q[1];v<=x.q[2];v++){const f=p3(x.q[0])+p3(v)+'.mp3';L.push(['https://verses.quran.foundation/Alafasy/mp3/'+f,'https://everyayah.com/data/Alafasy_128kbps/'+f])}
   return L;
 }
 const AU=new Audio();AU.preload='auto';
-let pl=-1,seq=[],pos=0,alt=0;
-function playNext(){
-  if(pos>=seq.length){pl=-1;render();return}
-  AU.src=seq[pos][alt]||seq[pos][0];
-  AU.play().catch(e=>{if(e&&e.name==='NotAllowedError'){toast('Ketuk tombol Dengar sekali lagi untuk memutar audio.');pl=-1;render()}});
+let pl=-1,mode='',cl=[],ci=0,seq=[],pos=0,alt=0;
+function play(){AU.play().catch(e=>{if(e&&e.name==='NotAllowedError'){toast('Ketuk tombol Dengar sekali lagi untuk memutar audio.');pl=-1;render()}})}
+function startLocal(i){
+  cl=cands(D[i]);
+  if(found[i])cl=[found[i]].concat(cl.filter(u=>u!==found[i]));
+  ci=0;mode='local';AU.src=cl[0];play();
 }
-AU.onended=()=>{pos++;alt=0;playNext()};
+function playOnline(){
+  if(pos>=seq.length){pl=-1;render();return}
+  AU.src=seq[pos][alt]||seq[pos][0];play();
+}
+AU.onplaying=()=>{if(mode==='local'&&pl>=0){found[pl]=cl[ci];set('dz_au',found)}};
+AU.onended=()=>{
+  if(mode==='local'){pl=-1;render();return}
+  pos++;alt=0;playOnline();
+};
 AU.onerror=()=>{
-  if(alt===0&&seq[pos]&&seq[pos][1]){alt=1;playNext();return}
+  if(pl<0)return;
+  const x=D[pl];
+  if(mode==='local'){
+    if(ci+1<cl.length){ci++;AU.src=cl[ci];play();return}
+    if(x.q){mode='online';seq=urls(x);pos=0;alt=0;playOnline();return}
+    toast('File audio belum ada. Unggah ke folder audio/ dengan nama: '+slug(x.t)+'.mp3');pl=-1;render();return;
+  }
+  if(alt===0&&seq[pos]&&seq[pos][1]){alt=1;playOnline();return}
   toast('Audio belum bisa diputar. Periksa koneksi internet Anda.');pl=-1;render();
 };
 function togglePlay(i){
   if(pl===i){AU.pause();pl=-1;render();return}
-  const x=D[i];seq=urls(x);pos=0;alt=0;pl=i;render();playNext();
+  const x=D[i];pl=i;render();startLocal(i);
   if('mediaSession' in navigator){
     navigator.mediaSession.metadata=new MediaMetadata({title:x.t,artist:QARI,album:'DzikirKu',artwork:[{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]});
     navigator.mediaSession.setActionHandler('pause',()=>{AU.pause();pl=-1;render()});
   }
 }
+$('chk').onclick=async()=>{
+  const o=$('aul');o.textContent='Memeriksa...';let ok=0,html='';
+  for(let i=0;i<D.length;i++){
+    const L=cands(D[i]);let hit='';
+    for(const u of L){
+      try{const r=await fetch(u,{method:'HEAD',cache:'no-store'});
+        if(r.ok&&!(r.headers.get('content-type')||'').includes('text/html')){hit=u;break}}catch(e){}
+    }
+    if(hit){ok++;found[i]=hit}
+    html+=(hit?'<b>✓</b> ':'<i>✗</i> ')+(hit||L[0])+'<br>';
+  }
+  set('dz_au',found);
+  o.innerHTML='<b>'+ok+' dari '+D.length+' file audio ditemukan</b><br>'+html;
+};
 
 /* Pengingat */
 const sw=(el,k)=>{el.classList.toggle('on',!!S[k])};
