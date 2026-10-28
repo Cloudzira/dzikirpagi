@@ -1,6 +1,6 @@
-const CACHE = 'dzikirku-v3';
+const CACHE = 'dzikirku-v4';
 const ASSETS = [
-  './', './index.html', './manifest.json',
+  './', './index.html', './manifest.json', './favicon.ico',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
   './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'
 ];
