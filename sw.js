@@ -1,4 +1,4 @@
-const CACHE = 'dzikirku-v2';
+const CACHE = 'dzikirku-v3';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
@@ -23,6 +23,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== self.location.origin) return; // audio & font dari luar tidak di-cache
+  if (e.request.headers.has('range')) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
